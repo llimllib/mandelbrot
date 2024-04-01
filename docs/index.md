@@ -15,26 +15,9 @@ https://miriam-english.org/files/Dewdney_Mandelbrot/Dewdney_Mandelbrot.html
 <canvas id="mandelbrot" width=800 height=800></canvas>
 
 ```js echo
-const MAX_ITER = 100;
-const cmul = (c1, c2) => {
-  let [a, b] = c1;
-  let [c, d] = c2;
-  return [a * c - b * d, a * d + b * c];
-};
-const cadd = (c1, c2) => {
-  return [c1[0] + c2[0], c1[1] + c2[1]];
-};
-const dist = (c) => Math.sqrt(c[0] * c[0] + c[1] * c[1]);
-const lim = (c) => {
-  let z = c;
-  let count = 1;
-  while (dist(z) < 2 && count < MAX_ITER) {
-    z = cadd(cmul(z, z), c);
-    count += 1;
-  }
-  return count;
-};
+import { lim } from "./components/mandelbrot.js";
 
+const MAX_ITER = 100;
 const W = 800;
 const H = 800;
 
@@ -53,16 +36,21 @@ for (let i = 1; i < MAX_ITER; i++) {
   colors.set(i, colorscale(i));
 }
 colors.set(MAX_ITER, `rgb(0, 0, 0)`);
-console.log(colors[80]);
 
 const ctx = document.querySelector("canvas#mandelbrot").getContext("2d");
-for (let y = 0; y <= H; y++) {
-  for (let x = 0; x <= W; x++) {
-    const l = lim([xscale(x), yscale(y)]);
-    ctx.fillStyle = colors.get(l);
-    ctx.fillRect(x, y, 1, 1);
+const drawRow = (ctx, y = 0, rows = 20) => {
+  for (let i = 0; i < rows; i++) {
+    for (let x = 0; x <= W; x++) {
+      const l = lim([xscale(x), yscale(y + i)], MAX_ITER);
+      ctx.fillStyle = colors.get(l);
+      ctx.fillRect(x, y + i, 1, 1);
+    }
   }
-}
+  if (y < H) {
+    requestAnimationFrame(() => drawRow(ctx, y + rows));
+  }
+};
+requestAnimationFrame(() => drawRow(ctx));
 ```
 
 ```js
