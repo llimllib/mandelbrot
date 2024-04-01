@@ -10,7 +10,7 @@ const cadd = (c1, c2) => {
 
 const dist = (c) => Math.sqrt(c[0] * c[0] + c[1] * c[1]);
 
-export const lim = (c, max_iter) => {
+export const mandelbrot = (c, max_iter) => {
   let z = c;
   let count = 1;
   while (dist(z) < 2 && count < max_iter) {
