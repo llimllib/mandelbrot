@@ -35,6 +35,7 @@ const reset = view(Inputs.button("reset zoom"));
 reset;
 state.xscale = d3.scaleLinear([0, W], [-2, 0.6]);
 state.yscale = d3.scaleLinear([0, H], [1.25, -1.25]);
+state.coords = [0, 0];
 if (state.infoEnabled) {
   clearOverlay();
   drawDebug();
@@ -64,6 +65,7 @@ const H = 800;
 const state = {
   xscale: d3.scaleLinear([0, W], [-2, 0.6]),
   yscale: d3.scaleLinear([0, H], [1.25, -1.25]),
+  coords: [0, 0],
   infoEnabled: false,
 };
 
@@ -96,7 +98,6 @@ const overlay = ocanvas.getContext("2d");
 const bbox = ocanvas.getBoundingClientRect();
 
 overlay.font = "24px Arial";
-let coords = [0, 0];
 let mousedown = false;
 
 const drawDebug = () => {
@@ -116,7 +117,7 @@ const clearOverlay = () => {
 document.querySelector("#overlay").addEventListener("mousedown", (e) => {
   const mx = e.clientX - bbox.left;
   const my = e.clientY - bbox.top;
-  coords = [mx, my];
+  state.coords = [mx, my];
   mousedown = true;
 });
 
@@ -126,7 +127,12 @@ document.querySelector("#overlay").addEventListener("mousemove", (e) => {
     const my = e.clientY - bbox.top;
     clearOverlay();
     overlay.strokeStyle = "white";
-    overlay.strokeRect(coords[0], coords[1], mx - coords[0], my - coords[1]);
+    overlay.strokeRect(
+      state.coords[0],
+      state.coords[1],
+      mx - state.coords[0],
+      my - state.coords[1],
+    );
     console.log(state.infoEnabled);
     if (state.infoEnabled) drawDebug();
   }
@@ -140,10 +146,10 @@ document.querySelector("#overlay").addEventListener("mouseup", (e) => {
   clearOverlay();
   const mx = e.clientX - bbox.left;
   const my = e.clientY - bbox.top;
-  const minx = Math.min(coords[0], mx);
-  const maxx = Math.max(coords[0], mx);
-  const miny = Math.min(coords[1], my);
-  const maxy = Math.max(coords[1], my);
+  const minx = Math.min(state.coords[0], mx);
+  const maxx = Math.max(state.coords[0], mx);
+  const miny = Math.min(state.coords[1], my);
+  const maxy = Math.max(state.coords[1], my);
   const maxDiff = Math.max(maxx - minx, maxy - miny);
   state.xscale = d3.scaleLinear(
     [0, W],
