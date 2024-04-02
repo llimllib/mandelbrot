@@ -20,6 +20,14 @@ canvas {
 }
 </style>
 
+```js
+// TODO:
+// - input to select a color scheme
+// - share a link to an area
+// - implement panning
+//   - for bonus points, don't redraw what's not invalidated
+```
+
 # Zoomable Mandelbrot
 
 - click and drag to zoom in on an area
