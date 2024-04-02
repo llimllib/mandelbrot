@@ -38,3 +38,16 @@ export const fmandelbrot = (c, max_iter) => {
   }
   return count;
 };
+
+export const julia = (c, z, max_iter) => {
+  let [cr, ci] = c;
+  let [zr, zi] = z;
+  let count = 0;
+  while (zr * zr + zi * zi < 4 && count < max_iter) {
+    const temp = zr * zr - zi * zi;
+    zi = 2 * zr * zi + ci;
+    zr = temp + cr;
+    count += 1;
+  }
+  return count;
+};
