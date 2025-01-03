@@ -40,7 +40,7 @@ const mode = view(
 
 <div class="canvases">
   <canvas id="mcanv" width=800 height=800></canvas>
-  <canvas id="overlay" width=800 height=800></canvas>
+  <canvas id="moverlay" width=800 height=800></canvas>
 </div>
 
 ## Julia set
@@ -59,17 +59,22 @@ const state = {
   yscale: d3.scaleLinear([0, H], [1.25, -1.25]),
   jxscale: d3.scaleLinear([0, W], [-1.5, 1.5]),
   jyscale: d3.scaleLinear([0, H], [1.25, -1.25]),
-  coords: [0, 0],
+  mcoords: [0, 0],
+  jcoords: [0, 0],
   mousedown: false,
+  juliaC: [-0.74543, 0.11301],
 };
 ```
 
-```js echo
+```js
 import { fmandelbrot, julia } from "./components/mandelbrot.js";
 
 const colors = new Map();
+// const colorscale = d3
+//   .scaleSequentialLog(d3.interpolateInferno)
+//   .domain([1, MAX_ITER]);
 const colorscale = d3
-  .scaleSequentialLog(d3.interpolateInferno)
+  .scaleSequentialLog(d3.interpolateCividis)
   .domain([1, MAX_ITER]);
 for (let i = 1; i < MAX_ITER; i++) {
   colors.set(i, colorscale(i));
@@ -94,103 +99,159 @@ requestAnimationFrame(() => drawRow(brotCtx, state.xscale, state.yscale));
 
 ```js
 const juliaContext = document.querySelector("canvas#jcanv").getContext("2d");
-const drawJuliaRow = (ctx, xscale, yscale, c, y = 0, rows = 80) => {
+const drawJuliaRow = (ctx, xscale, yscale, y = 0, rows = 80) => {
   for (let i = 0; i < rows; i++) {
     for (let x = 0; x <= W; x++) {
-      const l = julia(c, [xscale(x), yscale(y + i)], MAX_ITER);
+      const l = julia(state.juliaC, [xscale(x), yscale(y + i)], MAX_ITER);
       ctx.fillStyle = colors.get(l);
       ctx.fillRect(x, y + i, 1, 1);
     }
   }
   if (y < H) {
     requestAnimationFrame(() =>
-      drawJuliaRow(ctx, xscale, yscale, c, y + rows, rows),
+      drawJuliaRow(ctx, xscale, yscale, y + rows, rows),
     );
   }
 };
 requestAnimationFrame(() =>
-  drawJuliaRow(juliaContext, state.jxscale, state.jyscale, [-0.74543, 0.11301]),
+  drawJuliaRow(juliaContext, state.jxscale, state.jyscale),
 );
 ```
 
 ```js
-const ocanvas = document.querySelector("canvas#overlay");
-const overlay = ocanvas.getContext("2d");
-const bbox = ocanvas.getBoundingClientRect();
-const mcanvCtx = document.querySelector("canvas#mcanv").getContext("2d");
-const jcanvCtx = document.querySelector("canvas#jcanv").getContext("2d");
+const mocanvas = document.querySelector("canvas#moverlay");
+const mandelbrotCtx = document.querySelector("canvas#mcanv").getContext("2d");
+const jocanvas = document.querySelector("canvas#joverlay");
+const juliaCtx = document.querySelector("canvas#jcanv").getContext("2d");
 
-const clearOverlay = () => {
-  overlay.clearRect(0, 0, W, H);
+const clearOverlay = (ctx) => {
+  ctx.clearRect(0, 0, W, H);
 };
 
-const handleMouseDown = (e) => {
-  const mx = e.clientX - bbox.left;
-  const my = e.clientY - bbox.top;
-  state.coords = [mx, my];
-  console.log("click received. mode:", mode);
-  // left button click
-  if (mode == "zoom") {
-    state.mousedown = true;
-    // right or middle, draw the julia set at that point
-  } else {
-    requestAnimationFrame(() =>
-      drawJuliaRow(jcanvCtx, state.jxscale, state.jyscale, [
-        state.xscale(mx),
-        state.yscale(my),
-      ]),
+const handleMouseDown = (cnvs, coords) => {
+  const ctx = cnvs.getContext("2d");
+  const bbox = cnvs.getBoundingClientRect();
+  return (e) => {
+    const mx = e.clientX - bbox.left;
+    const my = e.clientY - bbox.top;
+    coords[0] = mx;
+    coords[1] = my;
+    console.log(
+      "click received. mode:",
+      mode,
+      state.mcoords,
+      state.jcoords,
+      mx,
+      my,
     );
-  }
+    if (mode == "zoom") {
+      state.mousedown = true;
+    } else {
+      state.juliaC = [state.xscale(mx), state.yscale(my)];
+      state.jxscale = d3.scaleLinear([0, W], [-1.5, 1.5]);
+      state.jyscale = d3.scaleLinear([0, H], [1.25, -1.25]);
+      requestAnimationFrame(() =>
+        drawJuliaRow(juliaCtx, state.jxscale, state.jyscale),
+      );
+    }
+  };
 };
-ocanvas.addEventListener("mousedown", handleMouseDown);
+const moHandleDown = handleMouseDown(mocanvas, state.mcoords);
+mocanvas.addEventListener("mousedown", moHandleDown);
 invalidation.then(() =>
-  ocanvas.removeEventListener("mousedown", handleMouseDown),
+  mocanvas.removeEventListener("mousedown", moHandleDown),
 );
 
-const handleMouseMove = (e) => {
-  if (!state.mousedown) {
-    return;
-  }
-  const mx = e.clientX - bbox.left;
-  const my = e.clientY - bbox.top;
-  clearOverlay();
-  overlay.strokeStyle = "white";
-  overlay.strokeRect(
-    state.coords[0],
-    state.coords[1],
-    mx - state.coords[0],
-    my - state.coords[1],
-  );
-};
-ocanvas.addEventListener("mousemove", handleMouseMove);
+const joHandleDown = handleMouseDown(jocanvas, state.jcoords);
+jocanvas.addEventListener("mousedown", joHandleDown);
 invalidation.then(() =>
-  ocanvas.removeEventListener("mousemove", handleMouseMove),
+  jocanvas.removeEventListener("mousedown", joHandleDown),
 );
 
-const handleMouseUp = (e) => {
-  if (!state.mousedown) {
-    return;
-  }
-  state.mousedown = false;
-  clearOverlay();
-  const mx = e.clientX - bbox.left;
-  const my = e.clientY - bbox.top;
-  const minx = Math.min(state.coords[0], mx);
-  const maxx = Math.max(state.coords[0], mx);
-  const miny = Math.min(state.coords[1], my);
-  const maxy = Math.max(state.coords[1], my);
-  const maxDiff = Math.max(maxx - minx, maxy - miny);
-  state.xscale = d3.scaleLinear(
-    [0, W],
-    [state.xscale(minx), state.xscale(minx + maxDiff)],
-  );
-  state.yscale = d3.scaleLinear(
-    [0, H],
-    [state.yscale(miny), state.yscale(miny + maxDiff)],
-  );
-  console.log("drawing mouseup brot");
-  requestAnimationFrame(() => drawRow(mcanvCtx, state.xscale, state.yscale));
+const handleMouseMove = (cnvs, coords) => {
+  const ctx = cnvs.getContext("2d");
+  const bbox = cnvs.getBoundingClientRect();
+  return (e) => {
+    if (!state.mousedown) {
+      return;
+    }
+    const mx = e.clientX - bbox.left;
+    const my = e.clientY - bbox.top;
+    clearOverlay(ctx);
+    ctx.strokeStyle = "white";
+    ctx.strokeRect(coords[0], coords[1], mx - coords[0], my - coords[1]);
+  };
 };
-ocanvas.addEventListener("mouseup", handleMouseUp);
-invalidation.then(() => ocanvas.removeEventListener("mouseup", handleMouseUp));
+const moHandleMove = handleMouseMove(mocanvas, state.mcoords);
+mocanvas.addEventListener("mousemove", moHandleMove);
+invalidation.then(() =>
+  mocanvas.removeEventListener("mousemove", moHandleMove),
+);
+
+const joHandleMove = handleMouseMove(jocanvas, state.jcoords);
+jocanvas.addEventListener("mousemove", joHandleMove);
+invalidation.then(() =>
+  jocanvas.removeEventListener("mousemove", joHandleMove),
+);
+
+const handleMouseUp = (cnvs, drawctx, coords, xscale, yscale, draw) => {
+  const ctx = cnvs.getContext("2d");
+  const bbox = cnvs.getBoundingClientRect();
+  return (e) => {
+    console.log("up");
+    if (!state.mousedown) {
+      return;
+    }
+    state.mousedown = false;
+    clearOverlay(ctx);
+    const mx = e.clientX - bbox.left;
+    const my = e.clientY - bbox.top;
+    const minx = Math.min(coords[0], mx);
+    const maxx = Math.max(coords[0], mx);
+    const miny = Math.min(coords[1], my);
+    const maxy = Math.max(coords[1], my);
+    console.log(e.clientX, bbox.left);
+    console.log(e.clientY, bbox.top);
+    console.log("zooming: ", minx, maxx, miny, maxy);
+    console.log(
+      "zooming: ",
+      state[xscale](minx),
+      state[xscale](maxx),
+      state[yscale](miny),
+      state[yscale](maxy),
+    );
+    const maxDiff = Math.max(maxx - minx, maxy - miny);
+    state[xscale] = d3.scaleLinear(
+      [0, W],
+      [state[xscale](minx), state[xscale](minx + maxDiff)],
+    );
+    state[yscale] = d3.scaleLinear(
+      [0, H],
+      [state[yscale](miny), state[yscale](miny + maxDiff)],
+    );
+    requestAnimationFrame(() => draw(drawctx, state[xscale], state[yscale]));
+  };
+};
+
+const moHandleUp = handleMouseUp(
+  mocanvas,
+  mandelbrotCtx,
+  state.mcoords,
+  "xscale",
+  "yscale",
+  drawRow,
+);
+mocanvas.addEventListener("mouseup", moHandleUp);
+invalidation.then(() => mocanvas.removeEventListener("mouseup", moHandleUp));
+
+const joHandleUp = handleMouseUp(
+  jocanvas,
+  juliaCtx,
+  state.mcoords,
+  "jxscale",
+  "jyscale",
+  drawJuliaRow,
+);
+jocanvas.addEventListener("mouseup", joHandleUp);
+invalidation.then(() => jocanvas.removeEventListener("mouseup", joHandleUp));
 ```
