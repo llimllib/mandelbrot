@@ -34,6 +34,7 @@ canvas {
 - click the `reset zoom` button to get back to the start
 - press the `i` key to view info about the zoomed area
 - I used [this article](https://miriam-english.org/files/Dewdney_Mandelbrot/Dewdney_Mandelbrot.html) as a starting point. Source code [available here](https://github.com/llimllib/mandelbrot)
+  - TODO: [this article](https://mathr.co.uk/blog/2021-05-14_deep_zoom_theory_and_practice.html) has some documentation of how to do mandelbrot deep zoom
 
 ```js
 const reset = view(Inputs.button("reset zoom"));
